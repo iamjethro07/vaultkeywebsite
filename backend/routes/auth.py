@@ -3,7 +3,7 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 import bcrypt, re, random, string, smtplib, os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from db import query
 
 auth_bp = Blueprint('auth', __name__)
@@ -11,6 +11,7 @@ auth_bp = Blueprint('auth', __name__)
 def hash_pw(p): return bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
 def check_pw(p, h): return bcrypt.checkpw(p.encode(), h.encode())
 def gen_otp(): return ''.join(random.choices(string.digits, k=6))
+def now_utc(): return datetime.now(timezone.utc)
 
 def send_email(to_email, subject, html_body):
     smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
@@ -44,8 +45,10 @@ def signup():
         return jsonify(error='Username already taken.'), 409
     if query('SELECT id FROM users WHERE email=%s', (email,), one=True):
         return jsonify(error='Email already registered.'), 409
-    uid = query('INSERT INTO users (username,email,password_hash) VALUES (%s,%s,%s)',
-                (username, email, hash_pw(password)), commit=True)
+    uid = query(
+        'INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING id',
+        (username, email, hash_pw(password)), commit=True
+    )
     return jsonify(
         message='Account created!',
         user={'id': uid, 'username': username, 'email': email},
@@ -82,10 +85,12 @@ def forgot_password():
     if not user:
         return jsonify(message='If that email exists, an OTP has been sent.'), 200
     otp = gen_otp()
-    expires_at = datetime.utcnow() + timedelta(minutes=10)
+    expires_at = now_utc() + timedelta(minutes=10)
     query('DELETE FROM password_resets WHERE user_id=%s', (user['id'],), commit=True)
-    query('INSERT INTO password_resets (user_id,otp,expires_at) VALUES (%s,%s,%s)',
-          (user['id'], otp, expires_at), commit=True)
+    query(
+        'INSERT INTO password_resets (user_id, otp, expires_at) VALUES (%s, %s, %s)',
+        (user['id'], otp, expires_at), commit=True
+    )
     try:
         html = f"""
         <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0d0d14;color:#f1f1f8;padding:32px;border-radius:12px;border:1px solid #252535">
@@ -105,7 +110,7 @@ def forgot_password():
         send_email(email, '🔐 VaultKey — Your Password Reset OTP', html)
     except Exception as e:
         print(f'Email send error: {e}')
-        return jsonify(error='Failed to send email. Check SMTP settings in .env'), 500
+        return jsonify(error='Failed to send email. Check SMTP settings.'), 500
     return jsonify(message='OTP sent to your email.'), 200
 
 
@@ -119,11 +124,17 @@ def verify_otp():
     user = query('SELECT id FROM users WHERE email=%s', (email,), one=True)
     if not user:
         return jsonify(error='Invalid OTP.'), 400
-    record = query('SELECT * FROM password_resets WHERE user_id=%s AND otp=%s',
-                   (user['id'], otp), one=True)
+    record = query(
+        'SELECT * FROM password_resets WHERE user_id=%s AND otp=%s',
+        (user['id'], otp), one=True
+    )
     if not record:
         return jsonify(error='Invalid OTP.'), 400
-    if datetime.utcnow() > record['expires_at']:
+    # Make expires_at timezone-aware for comparison
+    expires_at = record['expires_at']
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if now_utc() > expires_at:
         query('DELETE FROM password_resets WHERE user_id=%s', (user['id'],), commit=True)
         return jsonify(error='OTP expired. Please request a new one.'), 400
     query('UPDATE password_resets SET verified=TRUE WHERE user_id=%s', (user['id'],), commit=True)
@@ -143,15 +154,22 @@ def reset_password():
     user = query('SELECT id FROM users WHERE email=%s', (email,), one=True)
     if not user:
         return jsonify(error='Invalid request.'), 400
-    record = query('SELECT * FROM password_resets WHERE user_id=%s AND otp=%s AND verified=TRUE',
-                   (user['id'], otp), one=True)
+    record = query(
+        'SELECT * FROM password_resets WHERE user_id=%s AND otp=%s AND verified=TRUE',
+        (user['id'], otp), one=True
+    )
     if not record:
         return jsonify(error='OTP not verified.'), 400
-    if datetime.utcnow() > record['expires_at']:
+    expires_at = record['expires_at']
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if now_utc() > expires_at:
         query('DELETE FROM password_resets WHERE user_id=%s', (user['id'],), commit=True)
         return jsonify(error='OTP expired. Please start again.'), 400
-    query('UPDATE users SET password_hash=%s WHERE id=%s',
-          (hash_pw(new_password), user['id']), commit=True)
+    query(
+        'UPDATE users SET password_hash=%s WHERE id=%s',
+        (hash_pw(new_password), user['id']), commit=True
+    )
     query('DELETE FROM password_resets WHERE user_id=%s', (user['id'],), commit=True)
     return jsonify(message='Password reset successfully! You can now log in.'), 200
 
