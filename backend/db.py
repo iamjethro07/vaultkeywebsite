@@ -25,14 +25,18 @@ def get_db():
     return g.db
 
 def query(sql, args=(), one=False, commit=False):
-    # Rewrite %s-style placeholders (same as pymysql, so your routes stay untouched)
     db = get_db()
     try:
         with db.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(sql, args or None)
             if commit:
                 db.commit()
-                return cur.lastrowid if cur.rowcount else None
+                # If query has RETURNING, fetch the id
+                try:
+                    row = cur.fetchone()
+                    return row['id'] if row else None
+                except Exception:
+                    return None
             return cur.fetchone() if one else cur.fetchall()
     except Exception as e:
         if commit:
