@@ -8,8 +8,8 @@ from db import query
 
 auth_bp = Blueprint('auth', __name__)
 
-def hash_pw(p): return bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
-def check_pw(p, h): return bcrypt.checkpw(p.encode(), h.encode())
+def hash_pw(p): return bcrypt.hashpw(p[:72].encode(), bcrypt.gensalt()).decode()
+def check_pw(p, h): return bcrypt.checkpw(p[:72].encode(), h.encode())
 def gen_otp(): return ''.join(random.choices(string.digits, k=6))
 def utcnow(): return datetime.now(timezone.utc)
 
