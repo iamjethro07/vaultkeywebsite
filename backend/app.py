@@ -15,7 +15,6 @@ def create_app():
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 3600
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000
 
-    # ✅ Restrict CORS to your Vercel frontend URL
     CORS(app, supports_credentials=True, origins=[
         os.getenv('FRONTEND_URL', 'http://localhost:3000')
     ])
@@ -39,18 +38,3 @@ app = create_app()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-```
-
-**3. `requirements.txt`** — make sure these are present:
-```
-flask
-flask-cors
-flask-jwt-extended
-python-dotenv
-psycopg2-binary
-gunicorn
-```
-
-**4. `Procfile`** — update to use gunicorn:
-```
-web: gunicorn app:app
