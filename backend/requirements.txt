@@ -1,8 +1,7 @@
 flask
 flask-cors
 flask-jwt-extended
-bcrypt
-pymysql
 python-dotenv
-cryptography
+psycopg2-binary
+bcrypt
 gunicorn
