@@ -20,8 +20,8 @@ def send_email(to_email, subject, html_body):
     smtp_pass = os.getenv('SMTP_PASS', '')
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
-    msg['From']    = f'VaultKey <{smtp_user}>'
-    msg['To']      = to_email
+    msg['From'] = f'VaultKey <{smtp_user}>'
+    msg['To'] = to_email
     msg.attach(MIMEText(html_body, 'html'))
     with smtplib.SMTP(smtp_host, smtp_port) as server:
         server.starttls()
@@ -101,7 +101,7 @@ def forgot_password():
             <p style="color:#6b6b85;font-size:11px;letter-spacing:.15em;margin-bottom:12px">YOUR ONE-TIME PASSWORD</p>
             <div style="font-size:40px;font-weight:700;letter-spacing:14px;color:#00d9a3;font-family:monospace">{otp}</div>
           </div>
-          <p style="font-size:12px;color:#6b6b85;line-height:1.6">If you did not request a password reset, please ignore this email. Your account remains secure.</p>
+          <p style="font-size:12px;color:#6b6b85;line-height:1.6">If you did not request a password reset, please ignore this email.</p>
           <hr style="border:none;border-top:1px solid #252535;margin:24px 0"/>
           <p style="font-size:11px;color:#444;text-align:center">VaultKey — Zero-Knowledge Password Manager</p>
         </div>
@@ -170,6 +170,7 @@ def reset_password():
 @jwt_required(refresh=True)
 def refresh():
     return jsonify(access_token=create_access_token(identity=get_jwt_identity())), 200
+
 
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()

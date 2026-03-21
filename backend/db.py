@@ -7,13 +7,18 @@ _cfg = {}
 
 def init_db(app):
     global _cfg
-    _cfg = {
-        'host':     os.getenv('DB_HOST', '127.0.0.1'),
-        'port':     int(os.getenv('DB_PORT', 5432)),
-        'user':     os.getenv('DB_USER', 'postgres'),
-        'password': os.getenv('DB_PASSWORD', ''),
-        'dbname':   os.getenv('DB_NAME', 'vaultkey'),
-    }
+    database_url = os.getenv('DATABASE_URL')
+
+    if database_url:
+        _cfg = {'dsn': database_url, 'sslmode': 'require'}
+    else:
+        _cfg = {
+            'host':     os.getenv('DB_HOST', '127.0.0.1'),
+            'port':     int(os.getenv('DB_PORT', 5432)),
+            'user':     os.getenv('DB_USER', 'postgres'),
+            'password': os.getenv('DB_PASSWORD', ''),
+            'dbname':   os.getenv('DB_NAME', 'vaultkey'),
+        }
 
     @app.teardown_appcontext
     def close(e):

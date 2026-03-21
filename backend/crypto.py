@@ -27,5 +27,4 @@ def decrypt(cipher_text: str) -> str:
         f = _get_key()
         return f.decrypt(cipher_text.encode()).decode()
     except Exception:
-        # Already plain text (old data) — return as-is
         return cipher_text

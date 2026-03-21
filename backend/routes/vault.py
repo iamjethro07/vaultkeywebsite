@@ -14,15 +14,17 @@ def decrypt_entry(e):
 @vault_bp.route('/entries', methods=['GET'])
 @jwt_required()
 def list_entries():
-    uid      = get_jwt_identity()
+    uid = get_jwt_identity()
     category = request.args.get('category')
-    search   = request.args.get('search')
+    search = request.args.get('search')
     sql, args = 'SELECT * FROM entries WHERE user_id=%s', [uid]
     if category:
-        sql += ' AND category=%s'; args.append(category)
+        sql += ' AND category=%s'
+        args.append(category)
     if search:
         sql += ' AND (name ILIKE %s OR username ILIKE %s OR url ILIKE %s)'
-        like = f'%{search}%'; args += [like, like, like]
+        like = f'%{search}%'
+        args += [like, like, like]
     sql += ' ORDER BY updated_at DESC'
     rows = query(sql, tuple(args)) or []
     return jsonify(entries=[decrypt_entry(dict(r)) for r in rows]), 200
@@ -30,8 +32,8 @@ def list_entries():
 @vault_bp.route('/entries', methods=['POST'])
 @jwt_required()
 def create_entry():
-    uid   = get_jwt_identity()
-    d     = request.get_json(silent=True) or {}
+    uid = get_jwt_identity()
+    d = request.get_json(silent=True) or {}
     name  = (d.get('name')     or '').strip()
     uname = (d.get('username') or '').strip()
     pw    = (d.get('password') or '').strip()
@@ -39,8 +41,8 @@ def create_entry():
         return jsonify(error='Name, username and password are required.'), 400
     row = query(
         'INSERT INTO entries (user_id,name,url,username,password,category,notes,favourite) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id',
-        (uid, name, d.get('url',''), uname, encrypt(pw),
-         d.get('category','General'), d.get('notes',''),
+        (uid, name, d.get('url', ''), uname, encrypt(pw),
+         d.get('category', 'General'), d.get('notes', ''),
          bool(d.get('favourite', False))), commit=True
     )
     eid = row['id']
@@ -55,8 +57,8 @@ def update_entry(eid):
     d = request.get_json(silent=True) or {}
     query(
         'UPDATE entries SET name=%s,url=%s,username=%s,password=%s,category=%s,notes=%s,favourite=%s WHERE id=%s AND user_id=%s',
-        (d.get('name'), d.get('url',''), d.get('username'), encrypt(d.get('password','')),
-         d.get('category','General'), d.get('notes',''),
+        (d.get('name'), d.get('url', ''), d.get('username'), encrypt(d.get('password', '')),
+         d.get('category', 'General'), d.get('notes', ''),
          bool(d.get('favourite', False)), eid, uid), commit=True
     )
     return jsonify(entry=decrypt_entry(dict(query('SELECT * FROM entries WHERE id=%s', (eid,), one=True)))), 200
