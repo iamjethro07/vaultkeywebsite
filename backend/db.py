@@ -42,7 +42,9 @@ def query(sql, args=(), one=False, commit=False):
             cur.execute(sql, args)
             if commit:
                 db.commit()
-                return cur.fetchone()
+                if cur.description:
+                    return cur.fetchone()
+                return None
             return cur.fetchone() if one else cur.fetchall()
     except Exception as e:
         if commit: db.rollback()
