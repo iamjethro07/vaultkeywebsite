@@ -15,9 +15,11 @@ def create_app():
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 3600
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000
 
-    CORS(app, supports_credentials=True, origins=[
-        os.getenv('FRONTEND_URL', 'http://localhost:3000')
-    ])
+    # Allow multiple frontend origins (dev & production)
+    frontend_urls = os.getenv('FRONTEND_URL', 'http://localhost:3000').split(',')
+    frontend_urls = [url.strip() for url in frontend_urls]
+    
+    CORS(app, supports_credentials=True, origins=frontend_urls)
 
     JWTManager(app)
     init_db(app)
