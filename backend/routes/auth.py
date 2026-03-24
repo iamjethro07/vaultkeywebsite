@@ -14,20 +14,22 @@ def gen_otp(): return ''.join(random.choices(string.digits, k=6))
 def utcnow(): return datetime.now(timezone.utc)
 
 def send_email(to_email, subject, html_body):
-    smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
-    smtp_port = int(os.getenv('SMTP_PORT', 587))
-    smtp_user = os.getenv('SMTP_USER', '')
-    smtp_pass = os.getenv('SMTP_PASS', '')
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = f'VaultKey <{smtp_user}>'
-    msg['To'] = to_email
-    msg.attach(MIMEText(html_body, 'html'))
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
-        server.starttls()
-        server.login(smtp_user, smtp_pass)
-        server.sendmail(smtp_user, to_email, msg.as_string())
-
+    try:
+        smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+        smtp_port = int(os.getenv('SMTP_PORT', 465))
+        smtp_user = os.getenv('SMTP_USER', '')
+        smtp_pass = os.getenv('SMTP_PASS', '')
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f'VaultKey <{smtp_user}>'
+        msg['To'] = to_email
+        msg.attach(MIMEText(html_body, 'html'))
+        with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+    except Exception as e:
+        print(f'Email send error: {e}', flush=True)
+        raise e
 
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
